@@ -1705,7 +1705,13 @@ function playerControl(dt){const G=GM,p=G.p,k=IN.pressed;const key=n=>k[n]?1:0;
   if(p.dead){G.downT+=dt;if(G.downT>2.4)respawn();return;}
   const c=p.inCar;
   if(c){p.x=c.x;p.y=c.y;p.vx=c.vx;p.vy=c.vy;
-    c.ctl.thr=clamp(-my,-1,1);c.ctl.steer=clamp(mx,-1,1);c.ctl.hb=(k['shift']||IN.hb)?1:0;if(G.wash){c.ctl.thr=0;c.ctl.steer=0;c.ctl.hb=0;}
+    c.ctl.thr=clamp(-my,-1,1);c.ctl.steer=clamp(mx,-1,1);c.ctl.hb=(k['shift']||IN.hb)?1:0;
+    if(IN.stick){ // TOUCH: point-and-go. The stick is the direction you want to drive; the car steers itself there.
+      const L=Math.hypot(IN.stick.x,IN.stick.y);const fs=fwdSpeed(c);
+      if(L>.18){const des=Math.atan2(IN.stick.y,IN.stick.x),err=nrm(des-c.ang),ae=Math.abs(err);
+        if(ae>1.9){c.ctl.thr=.55;c.ctl.steer=err>0?1:-1;}
+        else{c.ctl.steer=clamp(err*2.6,-1,1);c.ctl.thr=Math.min(1,L*1.3)*(ae>1.1?.55:(ae>.6?.8:1));}}
+      else{c.ctl.steer=0;c.ctl.thr=fs>35?-.7:0;}}if(G.wash){c.ctl.thr=0;c.ctl.steer=0;c.ctl.hb=0;}
     p.aimAng=IN.usingMouse?Math.atan2(s2w(IN.mouse.x,IN.mouse.y).y-p.y,s2w(IN.mouse.x,IN.mouse.y).x-p.x):(IN.aimSet?IN.aim:c.ang);
     if(c.dead){exitCar(true);}
     Snd.engine(clamp(carSpeed(c)/c.maxv,0,1));}
@@ -1724,7 +1730,7 @@ function playerControl(dt){const G=GM,p=G.p,k=IN.pressed;const key=n=>k[n]?1:0;
 }
 function stepWorld(dt){const G=GM,p=G.p,st=G.story;
   G.clock+=dt*CLOCKRATE;if(G.clock>=420){gameOver('dawn');return;}
-  if(st.phase==='intro'&&p.inCar===G.regal){st.phase='play';st.callT=4;pushNote('YOUR PHONE WILL RING WITH ORDERS. FOLLOW THE MAP TO THE DROP.','#ffd23f');}
+  if(st.phase==='intro'&&p.inCar===G.regal){st.phase='play';st.callT=4;pushNote(TOUCH?'DRIVING: PUSH THE STICK WHERE YOU WANT TO GO. THE CAR STEERS ITSELF.':'YOUR PHONE WILL RING WITH ORDERS. FOLLOW THE MAP TO THE DROP.','#ffd23f');}
   if(p.inCar===G.regal&&G.lastCar!==G.regal)tagline('hot');G.lastCar=p.inCar;G.tagT=Math.max(0,G.tagT-dt);
   if(G.regal.locked&&!G.cops.some(q=>q.guard&&!q.dead)){G.regal.locked=false;pushNote('THE GUARDS LEFT. THE REGAL IS UNLOCKED!','#7aff9a');}
   playerControl(dt);
@@ -1751,7 +1757,7 @@ function stepWorld(dt){const G=GM,p=G.p,st=G.story;
   if(!p.dead&&!G.finale0&&st.phase==='finale'&&st.finale&&st.finale.stage==='run'){const h=PLACES.hall,x=h.x+h.w/2,y=h.y+h.h+40;if(Math.hypot(p.x-x,p.y-y)<90)st.arriveHQ();}
   G.vig=Math.max(0,G.vig-dt*.5);
   // camera
-  const c=p.inCar,sp=c?carSpeed(c):0;const z=c?clamp(1.08-sp/820,.72,1.08):1.2;const look=c?{x:c.vx*.28,y:c.vy*.28}:{x:Math.cos(p.aimAng)*40,y:Math.sin(p.aimAng)*40};
+  const c=p.inCar,sp=c?carSpeed(c):0;const z=c?clamp((TOUCH?1.0:1.08)-sp/820,TOUCH?.66:.72,TOUCH?1.0:1.08):(TOUCH?1.1:1.2);const look=c?{x:c.vx*.28,y:c.vy*.28}:{x:Math.cos(p.aimAng)*40,y:Math.sin(p.aimAng)*40};
   camApply(dt,p.x,p.y,z,look);
 }
 function patrolCops(dt){const G=GM;G.patrolT-=dt;if(G.patrolT>0)return;G.patrolT=3;
